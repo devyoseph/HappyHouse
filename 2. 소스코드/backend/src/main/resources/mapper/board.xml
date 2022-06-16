@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ys.happyhouse.model.mapper.BoardMapper">
+
+	<!-- 게시글 관련: board -->
+	<insert id="registerArticle" parameterType="BoardDto">
+
+		<selectKey keyProperty="articleno" resultType="int"
+			order="BEFORE">
+			select IFNULL(max(articleno)+1, 0) from board
+		</selectKey>
+
+		insert into board values (#{articleno}, #{userid}, #{username},
+		#{subject}, #{content}, now(), 0)
+
+	</insert>
+
+	<select id="list" parameterType="map" resultType="BoardDto">
+		select
+		articleno, userid, username, subject, content, create_date,
+		visit_count
+		from board
+		order by create_date desc
+		limit #{start}, #{last}
+	</select>
+	
+	<select id="searchByContent" parameterType="BoardDto" resultType="BoardDto">
+		select
+		articleno, userid, username, subject, content, create_date,
+		visit_count
+		from board
+		where ${type} LIKE CONCAT('%', #{content}, '%')
+		order by create_date desc
+		limit #{start}, #{last}
+	</select>
+
+	<select id="detailArticle" parameterType="int"
+		resultType="BoardDto">
+		select articleno, userid, username, subject, content,
+		create_date, visit_count
+		from board
+		where articleno = #{articleno}
+	</select>
+
+	<update id="editArticle" parameterType="BoardDto">
+		update board
+		set subject =
+		#{subject}, content = #{content}
+		where articleno = #{articleno}
+	</update>
+
+	<delete id="deleteArticle" parameterType="int">
+		delete from board
+		where
+		articleno = #{articleno}
+	</delete>
+
+
+	<!-- 댓글 관련: reply -->
+	<select id="selectReply" parameterType="int"
+		resultType="ReplyDto">
+		select id, articleno, userid, username, content, create_date
+		from
+		board_reply
+		where articleno = #{articleno}
+	</select>
+
+	<insert id="registerReply" parameterType="ReplyDto">
+		<selectKey keyProperty="id" resultType="int" order="BEFORE">
+			select IFNULL(max(id)+1,0) from board_reply
+		</selectKey>
+
+		insert into board_reply (id, articleno, userid, username, content,
+		create_date)
+		values (#{id}, #{articleno}, #{userid}, #{username},
+		#{content}, now())
+	</insert>
+
+	<delete id="deleteReply" parameterType="int">
+		delete from board_reply
+		where id = #{reply_id}
+	</delete>
+
+	<!-- 좋아요 또는 싫어요 ++ -->
+	<select id="getMyScore" parameterType="likeDto" resultType="int">
+		select IF(count(*) = 0, 0, 
+	    (select score from board_count
+		where board_articleno=#{articleno} and userid=#{userid})
+	    ) score
+		from board_count
+		where board_articleno=#{articleno} and userid=#{userid}
+	</select>
+
+	<!-- 전체 좋아요 개수 리턴 -->
+	<select id="getAllScores" parameterType="int" resultType="likeDto">
+		select 
+			(
+		    select count(case when score = 1 then 1 end)
+		    from board_count
+		    where board_articleno = #{articleno}
+		    ) plus,
+			(
+		    select count(case when score = -1 then 1 end)
+		    from board_count
+		    where board_articleno = #{articleno}
+		    ) minus
+	</select>
+	
+	<!-- score 삭제 -->
+	<delete id="deleteScore" parameterType="likeDto">
+		delete from board_count
+		where userid = #{userid} and board_articleno = #{articleno}
+	</delete>
+	
+	<!-- score 등록 -->
+	<insert id="registerScore" parameterType="likeDto">
+		<selectKey keyProperty="id" resultType="int" order="BEFORE">
+			select IFNULL(max(id)+1,0) from board_count
+		</selectKey>
+
+		insert into board_count (id, board_articleno, userid, username, score,
+		create_date)
+		values (#{id}, #{articleno}, #{userid}, #{username},
+		#{score}, now())
+	</insert>
+</mapper>
